@@ -38,10 +38,10 @@ os.environ["AZURE_API_VERSION"] =os.environ["Azure_OPENAI_API_VERSION1"]
 
    
 messages = []
-openai.api_key =API_KEY
+openai.api_key = API_KEY
 openai.api_base = BASE_URL
-openai.api_type = os.environ["OPENAI_API_TYPE"] 
-openai.api_version = os.environ["OPENAI_API_VERSION"]
+# openai.api_type = os.environ["OPENAI_API_TYPE"] 
+# openai.api_version = os.environ["OPENAI_API_VERSION"]
 
 
 # Set up Azure Speech-to-Text and Text-to-Speech credentials

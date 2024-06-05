@@ -21,8 +21,8 @@ os.environ["OPENAI_API_TYPE"] = os.environ["Azure_OPENAI_API_TYPE1"]
 os.environ["OPENAI_API_BASE"] = os.environ["Azure_OPENAI_API_BASE1"]
 os.environ["OPENAI_API_KEY"] = os.environ["Azure_OPENAI_API_KEY1"]
 os.environ["OPENAI_API_VERSION"] = os.environ["Azure_OPENAI_API_VERSION1"]
-BASE_URL=os.environ["OPENAI_API_BASE"]
 API_KEY=os.environ["OPENAI_API_KEY"]
+BASE_URL=os.environ["OPENAI_API_BASE"]
 Chat_Deployment=os.environ["Azure_OPENAI_Chat_API_Deployment"]
 Whisper_key=os.environ["Azure_Whisper_API_KEY"]
 Whisper_endpoint = os.environ["Azure_Whisper_API_Url"]
@@ -97,7 +97,7 @@ messages = []
 openai.api_key =API_KEY
 openai.api_base = BASE_URL
 openai.api_type = os.environ["OPENAI_API_TYPE"] 
-openai.api_version = os.environ["OPENAI_API_VERSION"]
+# openai.api_version = os.environ["OPENAI_API_VERSION"]
 
 
 # Set up Azure Speech-to-Text and Text-to-Speech credentials
@@ -185,8 +185,8 @@ def generate_text(prompt):
     
     messages.append({"role": "user", "content": prompt})
     tools=[tool_runInTerminal_des,tool_setLLMVersion_des]
-    cont = run_conversation(messages,tools)
-    return cont["content"]
+    cont = get_llm_response(messages)
+    return cont
     
 
 def getLLMResponse(messages,tools):
@@ -197,7 +197,7 @@ def getLLMResponse(messages,tools):
         messages_ai = messages[-i:]
     sysmesg={"role": "system", "content": os.environ["sysprompt_"+lang]}    
     response = openai.ChatCompletion.create(
-        engine=Get_Chat_Deployment(),
+        model = "gpt-4o",
         messages=[sysmesg]+messages_ai,
         temperature=0.6,
         max_tokens=500,
@@ -207,12 +207,38 @@ def getLLMResponse(messages,tools):
     )
     return response.choices[0].message
 
+def get_llm_response(messages):
+    i=20
+    messages_ai = messages[-i:]
+    while 'role' in messages_ai[0] and messages_ai[0]["role"] == 'tool':
+        i+=1
+        messages_ai = messages[-i:]
+    sysmesg={"role": "system", "content": os.environ["sysprompt_"+lang]}  
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "gpt-4o",  # 确保模型名是正确的
+        "messages": [sysmesg]+messages_ai,
+        "temperature": 0.6,
+        "max_tokens": 500
+    }
+    response = requests.post(f"{BASE_URL}/v1/chat/completions", json=data, headers=headers)
+    response_json = response.json()
+    
+    # print(response_json)
 
+    if 'choices' in response_json and len(response_json['choices']) > 0:
+        ai_response_content = response_json['choices'][0]['message']['content']
+        return ai_response_content
+    else:
+        return "Error"
 
 def run_conversation(messages,tools):
     # Step 1: send the conversation and available functions to the model
-    response_message = getLLMResponse(messages,tools)
-    
+    # response_message = getLLMResponse(messages,tools)
+    response_message = get_llm_response(messages)
     # Step 2: check if the model wanted to call a function
     if 'tool_calls' in response_message:
         tool_calls = response_message.tool_calls
@@ -244,7 +270,7 @@ def run_conversation(messages,tools):
         response_message = run_conversation(messages,tools)
         return response_message
     else:
-        print(f'Final result: {response_message["content"]}')
+        print(f'Final result: {response_message}')
         return response_message
 
 def recognized_cb(evt):
